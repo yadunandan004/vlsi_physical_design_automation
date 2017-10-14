@@ -274,7 +274,19 @@ int createGainBucket()
 		if(cellData[cellId].getLockStatus()==false)
 		{
 				cellData[cellId].gain=computeGain(cellId);
-
+				map<int,vector<string> >::iterator pos;
+				pos=gainBucket.find(gain);
+				//if gain not found, create new list and add cell to it
+				if(pos==gainBucket.end())
+				{
+					vector<string> cellist;
+					cellist.push_back(cellId);
+					gainBucket.insert(pair<int,vector<string> >(gain,cellist));
+				}
+				//if gain found just append cell to it
+				else{
+					pos->second.push_back(cellId);
+				}
 		}
 	}
 }
