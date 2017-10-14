@@ -33,7 +33,8 @@ int cellMaxArea();
 bool checkAreaContraint();
 void moveCell();
 int computeCutSize();
-int createGainBucket();
+void createGainBucket();
+void updateGainBucket();
 // main  program
 int main()
 {
@@ -41,8 +42,9 @@ int main()
 	readCellArea("ibm01\\ibm01.are");
 	createPartition();
 	readhgrFile("ibm01\\ibm01.hgr");
+	createGainBucket();
 	// cout<<cellData["a24"].partition<<endl;
-	cout<<computeCutSize()<<endl;
+	// cout<<computeCutSize()<<endl;
 	// cout<<cellMaxArea()<<endl;
 	return 0;
 }
@@ -146,11 +148,9 @@ int FS(string cell)
 	vector<int> netList=cellData[cell].netList;
 	for(int i=0;i<netList.size();i++)
 	{
-		cout<<netList.at(i)<<endl;
 		//grab all nodes or cells from that net, using netid
 		vector<string> net=netNodeMap[netList.at(i)];
 		int netSp=0;
-		cout<<net.size()<<endl;
 		for(int j=0;j<net.size();j++)
 		{
 				string node=net.at(j).c_str();
@@ -163,13 +163,11 @@ int FS(string cell)
 					}
 				}
 		}
-		cout<<"\n"<<endl;
 		if(netSp==0)
 		{
 			fs++;
 		}
 	}
-	cout<<fs<<endl;
 	return fs;
 }
 //compute no of times the all the cells in the net belonging to that cell
@@ -201,7 +199,6 @@ int TS(string cell)
 			ts++;
 		}
 	}
-	cout<<ts<<endl;
 	return ts;
 }
 int computePartitionArea(int p)
@@ -263,7 +260,7 @@ int computeCutSize()
 }
 //gain bucket is a map where each key which is gain contains a list of nodes
 //which have that gain
-int createGainBucket()
+void createGainBucket()
 {
 	//clear all unwanted data if already present
 	gainBucket.clear();
@@ -273,7 +270,8 @@ int createGainBucket()
 		// proceed if not locked
 		if(cellData[cellId].getLockStatus()==false)
 		{
-				cellData[cellId].gain=computeGain(cellId);
+				int gain=computeGain(cellId);
+				cellData[cellId].gain=gain;
 				map<int,vector<string> >::iterator pos;
 				pos=gainBucket.find(gain);
 				//if gain not found, create new list and add cell to it
@@ -289,6 +287,33 @@ int createGainBucket()
 				}
 		}
 	}
+}
+void updateGainBucket(string cellId)
+{
+		std::vector<int> netlist=cellData[cellId].netlist;
+		//grab every netid the cell is part of
+		for(int i=0; i<netlist.size();i++)
+		{
+				std::vector<string> net=netNodeMap[netlist.at(i)];
+				//access every other cell in that net
+				for(int j=0;j<net.size();j++)
+				{
+						string node=net.at(j);
+						//we are accessing every other node
+						if(cellId!=node)
+						{
+							//get the gain of every node
+							int ngain=cellData[node].gain;
+							//find the position of the node in the gain bucket and remove it
+							std::vector<string>::iterator pos=gainBucket[ngain].find(node);
+							gainBucket[ngain].erase(pos);
+							//compute new gain and add it to the new position in the gain bucket
+							int newGain=computeGain(node);
+							cellData[node].gain=newGain;
+							gainBucket[newGain].push_back(node);
+						}
+				}
+		}
 }
 //moving cell from one partition to partition
 // void moveCell()
