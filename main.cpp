@@ -15,7 +15,9 @@ int nNets;
 float ratio_factor=0.5;
 map<string,Cell> cellData;
 map<int,vector<string> > netNodeMap;
+map<int,vector<string> >gainBucket;
 vector<string> cellIds;		//vector containing all cellIds to access cellData map at later stage
+
 //create maxheap to contain max cell area
 vector<int> sheap;
 
@@ -29,6 +31,9 @@ int computePartitionArea(int);
 int computeTotalArea();
 int cellMaxArea();
 bool checkAreaContraint();
+void moveCell();
+int computeCutSize();
+int createGainBucket();
 // main  program
 int main()
 {
@@ -37,7 +42,7 @@ int main()
 	createPartition();
 	readhgrFile("ibm01\\ibm01.hgr");
 	// cout<<cellData["a24"].partition<<endl;
-	cout<<checkAreaContraint()<<endl;
+	cout<<computeCutSize()<<endl;
 	// cout<<cellMaxArea()<<endl;
 	return 0;
 }
@@ -223,7 +228,7 @@ int cellMaxArea()
 	// pop_heap(sheap.begin(),sheap.end());
 	return max;
 }
-
+//check the area criterion using given ratio factor
 bool checkAreaContraint()
 {
 		int p0=computePartitionArea(0);
@@ -238,8 +243,43 @@ bool checkAreaContraint()
 			return false;
 		}
 }
-
-void moveCell()
+//compute cut size
+int computeCutSize()
 {
-
+		int cutSize=0;
+		for(int i=0;i<nNets;i++)
+		{
+				string initNode=netNodeMap[i].at(0);
+				for(int j=1;j<netNodeMap[i].size();j++)
+				{
+						if(cellData[initNode].partition!=cellData[netNodeMap[i].at(j)].partition)
+						{
+								cutSize++;
+								break;
+						}
+				}
+		}
+		return cutSize;
 }
+//gain bucket is a map where each key which is gain contains a list of nodes
+//which have that gain
+int createGainBucket()
+{
+	//clear all unwanted data if already present
+	gainBucket.clear();
+	for(int i=0;i<cellIds.size();i++)
+	{
+		string cellId=cellIds.at(i).c_str();
+		// proceed if not locked
+		if(cellData[cellId].getLockStatus()==false)
+		{
+				cellData[cellId].gain=computeGain(cellId);
+
+		}
+	}
+}
+//moving cell from one partition to partition
+// void moveCell()
+// {
+//
+// }
