@@ -7,13 +7,17 @@
 #include <map>
 #include <string>
 #include <algorithm>
+#include <limits>
 #include "cell.h"
 using namespace std;
 
 int nNets;
+float ratio_factor=0.5;
 map<string,Cell> cellData;
 map<int,vector<string> > netNodeMap;
 vector<string> cellIds;		//vector containing all cellIds to access cellData map at later stage
+//create maxheap to contain max cell area
+vector<int> sheap;
 
 void readCellArea(string);
 void createPartition();
@@ -24,14 +28,17 @@ int TS(string);
 int computePartitionArea(int);
 int computeTotalArea();
 int cellMaxArea();
+bool checkAreaContraint();
 // main  program
 int main()
 {
+	make_heap(sheap.begin(),sheap.end());
 	readCellArea("ibm01\\ibm01.are");
 	createPartition();
 	readhgrFile("ibm01\\ibm01.hgr");
 	// cout<<cellData["a24"].partition<<endl;
-	cout<<computeTotalArea()<<endl;
+	cout<<checkAreaContraint()<<endl;
+	// cout<<cellMaxArea()<<endl;
 	return 0;
 }
 //splitting a string with a given delimiter
@@ -62,6 +69,8 @@ void readCellArea(string file){
 				temp.Id=x.at(0);
 				temp.locked=false;
 				temp.area=atoi(x.at(1).c_str());
+				sheap.push_back(atoi(x.at(1).c_str()));
+				push_heap(sheap.begin(),sheap.end());
 				cellIds.push_back(x.at(0));
 				cellData.insert(pair<string,Cell>(x.at(0),temp));
 		}
@@ -207,8 +216,30 @@ int computeTotalArea()
 {
 	return(computePartitionArea(0)+computePartitionArea(1));
 }
-
+//pop heap top node to get max area
 int cellMaxArea()
 {
-		
+	int max=sheap.front();
+	// pop_heap(sheap.begin(),sheap.end());
+	return max;
+}
+
+bool checkAreaContraint()
+{
+		int p0=computePartitionArea(0);
+		int totalArea=computeTotalArea();
+		int maxAreaCell=cellMaxArea();
+		if(((ratio_factor*totalArea-maxAreaCell)<=p0)&&(p0<=(ratio_factor*totalArea+maxAreaCell)))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+}
+
+void moveCell()
+{
+	
 }
