@@ -241,5 +241,5 @@ bool checkAreaContraint()
 
 void moveCell()
 {
-	
+
 }
