@@ -12,12 +12,14 @@
 using namespace std;
 
 int nNets;
-float ratio_factor=0.5;
-map<string,Cell> cellData;
+float ratio_factor=0.5;//ratio fixed initially
+map<string,Cell> cellData;// an object of the cell class is created for each cell
 map<int,vector<string> > netNodeMap;
 map<int,vector<string> >gainBucket;
 vector<string> cellIds;		//vector containing all cellIds to access cellData map at later stage
-
+int initcutSz;
+int mincutSz;
+int totalArea;
 //create maxheap to contain max cell area
 vector<int> sheap;
 
@@ -27,25 +29,32 @@ void readhgrFile(string);
 int computeGain(string);
 int FS(string);
 int TS(string);
-int computePartitionArea(int);
-int computeTotalArea();
-int cellMaxArea();
-bool checkAreaContraint();
-void moveCell();
-int computeCutSize();
+int computePartitionArea(int);// gives arez of each partion
+int computeTotalArea();// sum of all cells
+int cellMaxArea();// cell with max area is returned
+bool checkAreaConstraint();
+void moveCells();// to move locked cell to  coplementary partition
+int computeCutSize();// calculates cut size
 void createGainBucket();
 void updateGainBucket();
 // main  program
 int main()
 {
 	make_heap(sheap.begin(),sheap.end());
-	readCellArea("ibm01\\ibm01.are");
+	readCellArea("ibm03\\ibm03.are");
 	createPartition();
-	readhgrFile("ibm01\\ibm01.hgr");
+	// cout<<totalArea<<endl;
+	// cout<<computePartitionArea(0)<<endl;
+	// cout<<computePartitionArea(1)<<endl;
+	// cout<<computePartitionArea(0)+computePartitionArea(1)<<endl;
+	readhgrFile("ibm03\\ibm03.hgr");
 	createGainBucket();
-	// cout<<cellData["a24"].partition<<endl;
-	// cout<<computeCutSize()<<endl;
-	// cout<<cellMaxArea()<<endl;
+	initcutSz=computeCutSize();
+	mincutSz=initcutSz;
+	moveCells();
+	cout<<"initial cutset size: "<<initcutSz<<endl;
+	cout<<"min cutset size: "<<mincutSz<<endl;
+	cout<<"max gain is: "<<initcutSz-mincutSz<<endl;
 	return 0;
 }
 //splitting a string with a given delimiter
@@ -77,7 +86,7 @@ void readCellArea(string file){
 				temp.locked=false;
 				temp.area=atoi(x.at(1).c_str());
 				sheap.push_back(atoi(x.at(1).c_str()));
-				push_heap(sheap.begin(),sheap.end());
+				push_heap(sheap.begin(),sheap.end()) ;
 				cellIds.push_back(x.at(0));
 				cellData.insert(pair<string,Cell>(x.at(0),temp));
 		}
@@ -89,15 +98,29 @@ void readCellArea(string file){
 void createPartition()
 {
 	int size=cellData.size();
-	int half=(int)size/2;
+	totalArea=computeTotalArea();
+	long areaCal=0;
+	long areaA=(ratio_factor) * (totalArea);
+	int areaindex = 0;
 	for(int i=0;i<size;i++)
 	{
-			if(i<=half)
+		string id=cellIds.at(i).c_str();
+		areaCal+=cellData[id].area;
+
+			if (areaCal>=areaA)
 			{
-				cellData[cellIds.at(i)].partition=0;
+			   areaindex = i-1;
+				 break;
+			}
+	}
+	for(int j=0;j<size;j++)
+	{
+			if(j<=areaindex)
+			{
+				cellData[cellIds.at(j)].partition=0;
 			}
 			else{
-				cellData[cellIds.at(i)].partition=1;
+				cellData[cellIds.at(j)].partition=1;
 			}
 	}
 }
@@ -214,9 +237,17 @@ int computePartitionArea(int p)
 		}
 		return area;
 }
+//compute the total area for all cells
 int computeTotalArea()
 {
-	return(computePartitionArea(0)+computePartitionArea(1));
+	int tarea=0;
+	for(int i=0;i<cellIds.size();i++)
+	{
+		string id=cellIds.at(i).c_str();
+		tarea+=cellData[id].area;
+	}
+	return tarea;
+	// return(computePartitionArea(0)+computePartitionArea(1));
 }
 //pop heap top node to get max area
 int cellMaxArea()
@@ -226,10 +257,9 @@ int cellMaxArea()
 	return max;
 }
 //check the area criterion using given ratio factor
-bool checkAreaContraint()
+bool checkAreaConstraint()
 {
 		int p0=computePartitionArea(0);
-		int totalArea=computeTotalArea();
 		int maxAreaCell=cellMaxArea();
 		if(((ratio_factor*totalArea-maxAreaCell)<=p0)&&(p0<=(ratio_factor*totalArea+maxAreaCell)))
 		{
@@ -302,28 +332,85 @@ void updateGainBucket(string cellId)
 						//we are accessing every other node
 						if(cellId!=node)
 						{
-							//get the gain of every node
-							int ngain=cellData[node].gain;
-							//find the position of the node in the gain bucket and remove it
-							// std::vector<string>::iterator pos=gainBucket[ngain].find(node);
-							for(int k=0;k<gainBucket[ngain].size();k++)
+							if(cellData[node].getLockStatus()==false)
 							{
-								if(gainBucket[ngain].at(k)==node)
+								//get the gain of every node
+								int ngain=cellData[node].gain;
+								//find the position of the node in the gain bucket and remove it
+								// std::vector<string>::iterator pos=gainBucket[ngain].find(node);
+								for(int k=0;k<gainBucket[ngain].size();k++)
 								{
-									gainBucket[ngain].erase(gainBucket[ngain].begin()+k);
-									//compute new gain and add it to the new position in the gain bucket
-									int newGain=computeGain(node);
-									cellData[node].gain=newGain;
-									gainBucket[newGain].push_back(node);
-									break;
+									if(gainBucket[ngain].at(k)==node)
+									{
+										gainBucket[ngain].erase(gainBucket[ngain].begin()+k);
+
+										//compute new gain and add it to the new position in the gain bucket
+										int newGain=computeGain(node);
+										cellData[node].gain=newGain;
+										gainBucket[newGain].push_back(node);
+										break;
+									}
 								}
 							}
 						}
 				}
 		}
+
 }
 //moving cell from one partition to partition
-// void moveCell()
-// {
-//
-// }
+void moveCells()
+{
+		//starting from highest gain
+		map<int,vector<string> >::reverse_iterator it1=gainBucket.rbegin();
+		while(it1 !=gainBucket.rend())
+		{
+			string cellId="";
+			cout<<" Gain: "<<it1->first<<endl;
+			bool flag=false;
+			//starting iteration for all nodes having said gain
+			for(int i=0;i<(it1->second).size();i++)
+			{
+					string node=(it1->second).at(i);
+					if(cellData[node].getLockStatus()==false)
+					{
+							cout<<"changing partition of cell: "<<node<<endl;
+							cout<<"from partion: "<<cellData[node].partition<<endl;
+							cellData[node].togglePartition();
+							cout<<"to new partition: "<<cellData[node].partition<<endl;
+							if(checkAreaConstraint()==false)
+							{
+										cellData[node].togglePartition();
+										cout<<"reverting partition as area constraints are not met"<<endl;
+										continue;
+							}
+							else
+							{
+									//locking the node
+									cellData[node].setLockStatus(true);
+									cellId=node;
+									cout<<"cell is now locked"<<endl;
+									int cs=computeCutSize();
+									if(cs<mincutSz)
+									{
+										mincutSz=cs;
+									}
+									else if(cs>mincutSz)
+									{
+										return;
+									}
+									cout<<"cut set size after move: "<<cs<<endl;
+									gainBucket[it1->first].erase(find(gainBucket[it1->first].begin(),gainBucket[it1->first].end(),node));
+									flag=true;
+									break;
+							}
+					}
+			}
+			if(flag==true)
+			{
+					updateGainBucket(cellId);
+					it1=gainBucket.rbegin();
+				  continue;
+			}
+			it1++;
+		}
+}
