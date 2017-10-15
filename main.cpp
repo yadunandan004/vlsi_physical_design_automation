@@ -290,7 +290,7 @@ void createGainBucket()
 }
 void updateGainBucket(string cellId)
 {
-		std::vector<int> netlist=cellData[cellId].netlist;
+		std::vector<int> netlist=cellData[cellId].netList;
 		//grab every netid the cell is part of
 		for(int i=0; i<netlist.size();i++)
 		{
@@ -305,12 +305,19 @@ void updateGainBucket(string cellId)
 							//get the gain of every node
 							int ngain=cellData[node].gain;
 							//find the position of the node in the gain bucket and remove it
-							std::vector<string>::iterator pos=gainBucket[ngain].find(node);
-							gainBucket[ngain].erase(pos);
-							//compute new gain and add it to the new position in the gain bucket
-							int newGain=computeGain(node);
-							cellData[node].gain=newGain;
-							gainBucket[newGain].push_back(node);
+							// std::vector<string>::iterator pos=gainBucket[ngain].find(node);
+							for(int k=0;k<gainBucket[ngain].size();k++)
+							{
+								if(gainBucket[ngain].at(k)==node)
+								{
+									gainBucket[ngain].erase(gainBucket[ngain].begin()+k);
+									//compute new gain and add it to the new position in the gain bucket
+									int newGain=computeGain(node);
+									cellData[node].gain=newGain;
+									gainBucket[newGain].push_back(node);
+									break;
+								}
+							}
 						}
 				}
 		}
