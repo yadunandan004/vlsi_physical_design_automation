@@ -41,13 +41,13 @@ void updateGainBucket();
 int main()
 {
 	make_heap(sheap.begin(),sheap.end());
-	readCellArea("ibm01\\ibm01.are");
+	readCellArea("ibm03\\ibm03.are");
 	createPartition();
 	// cout<<totalArea<<endl;
 	// cout<<computePartitionArea(0)<<endl;
 	// cout<<computePartitionArea(1)<<endl;
 	// cout<<computePartitionArea(0)+computePartitionArea(1)<<endl;
-	readhgrFile("ibm01\\ibm01.hgr");
+	readhgrFile("ibm03\\ibm03.hgr");
 	createGainBucket();
 	initcutSz=computeCutSize();
 	mincutSz=initcutSz;
@@ -147,14 +147,18 @@ void readhgrFile(string file)
 		while(getline(hgrfile,line2))
 		{
 			vector<string> temp= split(line2,' ');
-			//adding all netids to individual cell data, to know how many nets contain that cell or node
-			for (int i=0;i<temp.size();i++)
+			if(temp.size()>0)
 			{
-				cellData[temp.at(i)].netList.push_back(id);
+				//adding all netids to individual cell data, to know how many nets contain that cell or node
+				for (int i=0;i<temp.size();i++)
+				{
+					cellData[temp.at(i)].netList.push_back(id);
+				}
+				//adding netid, and all nodes in that net to a map
+				netNodeMap.insert(pair<int,vector<string> >(id,temp));
+				// cout<<id<<temp.at(0)<<endl;
+				id++;
 			}
-			//adding netid, and all nodes in that net to a map
-			netNodeMap.insert(pair<int,vector<string> >(id,temp));
-			id++;
 		}
 	}
 }
@@ -273,20 +277,22 @@ bool checkAreaConstraint()
 //compute cut size
 int computeCutSize()
 {
-		int cutSize=0;
-		for(int i=0;i<nNets;i++)
+	int cutSize=0;
+	for(int i=0;i<netNodeMap.size();i++)
+	{
+		// cout<<i<<endl;
+		string initNode=netNodeMap[i].at(0);
+		// cout<<initNode<<endl;
+		for(int j=1;j<netNodeMap[i].size();j++)
 		{
-				string initNode=netNodeMap[i].at(0);
-				for(int j=1;j<netNodeMap[i].size();j++)
-				{
-						if(cellData[initNode].partition!=cellData[netNodeMap[i].at(j)].partition)
-						{
-								cutSize++;
-								break;
-						}
-				}
+			if(cellData[initNode].partition!=cellData[netNodeMap[i].at(j)].partition)
+			{
+				cutSize++;
+				break;
+			}
 		}
-		return cutSize;
+	}
+	return cutSize;
 }
 //gain bucket is a map where each key which is gain contains a list of nodes
 //which have that gain
@@ -365,46 +371,46 @@ void moveCells()
 		while(it1 !=gainBucket.rend())
 		{
 			string cellId="";
-			cout<<" Gain: "<<it1->first<<endl;
+			// cout<<" Gain: "<<it1->first<<endl;
 			bool flag=false;
 			//starting iteration for all nodes having said gain
 			for(int i=0;i<(it1->second).size();i++)
 			{
-					string node=(it1->second).at(i);
-					if(cellData[node].getLockStatus()==false)
+				string node=(it1->second).at(i);
+				if(cellData[node].getLockStatus()==false)
+				{
+					// cout<<"changing partition of cell: "<<node<<endl;
+					// cout<<"from partion: "<<cellData[node].partition<<endl;
+					cellData[node].togglePartition();
+					// cout<<"to new partition: "<<cellData[node].partition<<endl;
+					if(checkAreaConstraint()==false)
 					{
-							cout<<"changing partition of cell: "<<node<<endl;
-							cout<<"from partion: "<<cellData[node].partition<<endl;
-							cellData[node].togglePartition();
-							cout<<"to new partition: "<<cellData[node].partition<<endl;
-							if(checkAreaConstraint()==false)
-							{
-								cellData[node].togglePartition();
-								(it1->second).erase((it1->second).begin()+i);
-								cout<<"reverting partition as area constraints are not met"<<endl;
-								continue;
-							}
-							else
-							{
-									//locking the node
-									cellData[node].setLockStatus(true);
-									cellId=node;
-									cout<<"cell is now locked"<<endl;
-									int cs=computeCutSize();
-									if(cs<mincutSz)
-									{
-										mincutSz=cs;
-									}
-									else if(cs>mincutSz)
-									{
-										return;
-									}
-									cout<<"cut set size after move: "<<cs<<endl;
-									gainBucket[it1->first].erase(find(gainBucket[it1->first].begin(),gainBucket[it1->first].end(),node));
-									flag=true;
-									break;
-							}
+						cellData[node].togglePartition();
+						(it1->second).erase((it1->second).begin()+i);
+						// cout<<"reverting partition as area constraints are not met"<<endl;
+						continue;
 					}
+					else
+					{
+						//locking the node
+						cellData[node].setLockStatus(true);
+						cellId=node;
+						// cout<<"cell is now locked"<<endl;
+						int cs=computeCutSize();
+						if(cs<mincutSz)
+						{
+							mincutSz=cs;
+						}
+						else if(cs>mincutSz)
+						{
+							return;
+						}
+						// cout<<"cut set size after move: "<<cs<<endl;
+						gainBucket[it1->first].erase(find(gainBucket[it1->first].begin(),gainBucket[it1->first].end(),node));
+						flag=true;
+						break;
+					}
+				}
 			}
 			if(flag==true)
 			{
