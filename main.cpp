@@ -12,7 +12,7 @@
 using namespace std;
 
 int nNets;
-float ratio_factor=0.5;//ratio fixed initially
+float ratio_factor=0.6;//ratio fixed initially
 map<string,Cell> cellData;// an object of the cell class is created for each cell
 map<int,vector<string> > netNodeMap;
 map<int,vector<string> >gainBucket;
@@ -41,13 +41,13 @@ void updateGainBucket();
 int main()
 {
 	make_heap(sheap.begin(),sheap.end());
-	readCellArea("ibm03\\ibm03.are");
+	readCellArea("ibm01\\ibm01.are");
 	createPartition();
 	// cout<<totalArea<<endl;
 	// cout<<computePartitionArea(0)<<endl;
 	// cout<<computePartitionArea(1)<<endl;
 	// cout<<computePartitionArea(0)+computePartitionArea(1)<<endl;
-	readhgrFile("ibm03\\ibm03.hgr");
+	readhgrFile("ibm01\\ibm01.hgr");
 	createGainBucket();
 	initcutSz=computeCutSize();
 	mincutSz=initcutSz;
@@ -379,9 +379,10 @@ void moveCells()
 							cout<<"to new partition: "<<cellData[node].partition<<endl;
 							if(checkAreaConstraint()==false)
 							{
-										cellData[node].togglePartition();
-										cout<<"reverting partition as area constraints are not met"<<endl;
-										continue;
+								cellData[node].togglePartition();
+								(it1->second).erase((it1->second).begin()+i);
+								cout<<"reverting partition as area constraints are not met"<<endl;
+								continue;
 							}
 							else
 							{
@@ -407,9 +408,9 @@ void moveCells()
 			}
 			if(flag==true)
 			{
-					updateGainBucket(cellId);
-					it1=gainBucket.rbegin();
-				  continue;
+				updateGainBucket(cellId);
+				it1=gainBucket.rbegin();
+			  	continue;
 			}
 			it1++;
 		}
